@@ -5,21 +5,18 @@ import BotonVolver from './BotonVolver';
 
 const categorias = ['Novelas', 'Técnicos', 'Infantil', 'Historia'];
 const portadaPorDefecto = 'https://placehold.co/300x180/e9e1cb/333333?text=Sin+portada';
-const MAX_PRESTAMOS_ACTIVOS = 3;
+const MAX_PRESTAMOS_ACTIVOS = 5;
 
-const Catalogo = ({ busqueda, libros, pedirPrestamo, usuario, prestamos }) => {
+const Catalogo = ({ busqueda, libros, pedirPrestamo, reservarLibro, usuario, prestamos }) => {
   const { nombre } = useParams();
   const navigate = useNavigate();
   const categoriaActiva = nombre ? decodeURIComponent(nombre) : null;
 
-  // Libro elegido en el catálogo, pendiente de confirmar en la barra de abajo.
-  // Todavía no es un préstamo real: eso pasa recién cuando se confirma.
   const [libroSeleccionado, setLibroSeleccionado] = useState(null);
-  const [confirmado, setConfirmado] = useState(null); // mensaje de éxito temporal
+  const [confirmado, setConfirmado] = useState(null);
 
-  // Cuántos préstamos ACTIVOS tiene el usuario ahora mismo (no cuenta devueltos)
   const prestamosActivos = usuario
-      ? (prestamos || []).filter((p) => p.correo === usuario.correo && p.estado === 'ACTIVO').length
+      ? (prestamos || []).filter((p) => p.correo === usuario.correo && (p.estado === 'ACTIVO' || p.estado === 'ATRASADO')).length
       : 0;
   const alcanzoLimite = prestamosActivos >= MAX_PRESTAMOS_ACTIVOS;
 
@@ -38,11 +35,14 @@ const Catalogo = ({ busqueda, libros, pedirPrestamo, usuario, prestamos }) => {
     setLibroSeleccionado(libro);
   };
 
-  const handleConfirmar = () => {
+  const handleConfirmar = async () => {
     if (!libroSeleccionado || alcanzoLimite) return;
-    pedirPrestamo(libroSeleccionado, usuario);
-    setConfirmado(libroSeleccionado.titulo);
+    const libro = libroSeleccionado;
     setLibroSeleccionado(null);
+    const exito = await pedirPrestamo(libro, usuario);
+    if (exito) {
+      setConfirmado(libro.titulo);
+    }
   };
 
   const handleCancelar = () => {
@@ -129,10 +129,14 @@ const Catalogo = ({ busqueda, libros, pedirPrestamo, usuario, prestamos }) => {
                               <Link to="/login" className="btn btn-amarillo btn-sm">
                                 Inicia sesión para pedir
                               </Link>
+                          ) : libro.disponibles === 0 ? (
+                              <Button variant="outline-dark" size="sm" onClick={() => reservarLibro(libro)}>
+                                Reservar
+                              </Button>
                           ) : (
                               <Button
                                   className="btn-amarillo"
-                                  disabled={libro.disponibles === 0 || alcanzoLimite}
+                                  disabled={alcanzoLimite}
                                   onClick={() => handleSeleccionar(libro)}
                               >
                                 {yaSeleccionado ? 'Seleccionado ✓' : 'Pedir préstamo'}
@@ -146,7 +150,6 @@ const Catalogo = ({ busqueda, libros, pedirPrestamo, usuario, prestamos }) => {
             </Row>
         )}
 
-        {/* Barra fija de vista previa: aparece solo cuando hay un libro elegido */}
         {libroSeleccionado && (
             <div
                 style={{

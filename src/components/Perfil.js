@@ -10,12 +10,14 @@ const Perfil = ({ usuario, editarPerfil, misPrestamos, misReservas, solicitarDev
 
   const categoria = usuario.correo.endsWith('@profesor.duoc.cl') ? 'Docente' : 'Estudiante';
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
-    editarPerfil(usuario.correo, { nombre, fechaNacimiento });
-    setEditando(false);
-    setGuardado(true);
-    setTimeout(() => setGuardado(false), 3000);
+    const exito = await editarPerfil(usuario.correo, { nombre, fechaNacimiento });
+    if (exito) {
+      setEditando(false);
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 3000);
+    }
   };
 
   return (
